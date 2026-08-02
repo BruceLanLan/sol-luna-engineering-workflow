@@ -1,44 +1,31 @@
-# Sol–Luna Engineering Workflow
+# Sol–Luna 分层工程工作流
 
-[中文说明](README.zh-CN.md)
+[English](README.en.md)
 
-A practical supervisor–executor workflow for Codex:
+这是一套面向 Codex 的主控—执行分层开发方案：
 
-- **GPT-5.6 Sol** is the supervisor, architect, planner, reviewer, and final acceptor.
-- **GPT-5.6 Luna** is the execution worker for bounded, testable, reversible tasks.
-- **Sol uses medium reasoning by default** and escalates to high only for genuinely difficult decisions.
+- **GPT-5.6 Sol** 负责理解需求、架构、规划、风险判断、审查和最终验收。
+- **GPT-5.6 Luna** 负责边界明确、可测试、可回滚的具体执行。
+- **Sol 默认使用 medium**，只有证据表明仍存在真正困难的决策时才临时升级到 high。
 
-The goal is not “always use the strongest setting.” The goal is to spend strong reasoning where judgment matters and fast execution where the work is already well specified—without trading away correctness, safety, or engineering quality.
+核心不是“始终使用最强档”，而是把 Sol 的推理用在不确定性和判断上，把 Luna 的执行力用在已经定义清楚的工作上，同时不牺牲正确性、安全性和工程质量。
 
 > [!IMPORTANT]
-> This repository is a reference configuration, not an OpenAI product guarantee. Model access, project-level custom agents, configuration keys, and UI behavior can vary by Codex version and account. Verify support in your environment before relying on automatic delegation.
+> 本仓库是参考配置，不代表 OpenAI 对所有版本的兼容性承诺。模型权限、项目级自定义 Agent、配置字段和界面行为可能随 Codex 版本及账户而不同。请先在自己的环境中验证，再依赖自动委派。
 
-## Architecture
+## 工作方式
 
-```mermaid
-flowchart TD
-    U["User request"] --> S["Sol: inspect and classify"]
-    S --> O["SOL_ONLY"]
-    S --> D["LUNA_DIRECT"]
-    S --> H["HYBRID"]
-    D --> L["Luna: bounded execution"]
-    H --> P["Sol: plan and task packets"]
-    P --> L
-    L --> E["Evidence: diff, tests, risks"]
-    O --> A["Sol: review and acceptance"]
-    E --> A
-```
+每个非简单任务先选择一条路由：
 
-The workflow separates two decisions:
+- `SOL_ONLY`：需求、架构、安全或风险仍不明确，由 Sol 保留。
+- `LUNA_DIRECT`：目标、范围、行为、验收和回滚都明确，直接交给 Luna。
+- `HYBRID`：Sol 先检查、规划并拆成任务包，Luna 执行，Sol 检查实际 diff 并最终验收。
 
-1. **Who owns the work?** `SOL_ONLY`, `LUNA_DIRECT`, or `HYBRID`.
-2. **How much Sol reasoning is justified?** `medium` by default, `high` only when evidence shows that a harder judgment remains.
+任务路由和推理强度是两件事。`SOL_ONLY` 或 `HYBRID` 通常仍使用 Sol medium；只有困难问题满足升级条件时才用 high。
 
-## Quick start
+## 快速安装
 
-### 1. Copy the project files
-
-Copy these files into the root of your repository:
+把以下文件复制到你的项目根目录：
 
 ```text
 .codex/config.toml
@@ -46,134 +33,98 @@ Copy these files into the root of your repository:
 AGENTS.md
 ```
 
-If your repository already has either configuration file, merge the fields instead of replacing existing rules. Do not create a second `[agents]` table in TOML.
+如果目标项目已经存在配置或规则，请做字段和章节合并，不要直接覆盖，也不要创建重复的 `[agents]` TOML 表。
 
-### 2. Start a new Codex task
-
-Project configuration is normally loaded when a task starts, so open a new task in the configured repository.
-
-### 3. Ask normally
-
-You do not need a magic command. For example:
+然后在该项目中新建一个 Codex 任务，直接提出需求：
 
 ```text
-Add input validation to the profile form and run the targeted tests.
-Follow the repository's Sol–Luna routing rules.
+给个人资料表单增加输入校验，并运行相关测试。
+按仓库里的 Sol–Luna 路由规则执行。
 ```
 
-Sol should classify the task before substantial work begins and delegate only when the packet is bounded and verifiable.
+通常不需要手动调用任何 Skill。项目规则会要求 Sol 在实质工作前先分类，再决定是否委派。
 
-## Explicit controls
+## 显式调用方式
 
-Use these prompts when you want to override or test routing:
+需要强制指定时可以这样说：
 
 ```text
-Treat this as LUNA_DIRECT and delegate it to luna_executor.
+这个任务按 LUNA_DIRECT 执行，交给 luna_executor。
 ```
 
 ```text
-Treat this as HYBRID. Sol should inspect, plan, define acceptance criteria,
-delegate bounded implementation to Luna, then inspect the diff and accept it.
+这个任务按 HYBRID 执行：Sol 负责检查、规划、验收标准和最终验收，
+Luna 负责边界明确的具体实现。
 ```
 
 ```text
-Keep this SOL_ONLY. Do not delegate architecture or security decisions.
+这个任务按 SOL_ONLY 执行，不要委派架构或安全决策。
 ```
 
 ```text
-Use Sol high only for the unresolved hard decision. Return routine execution
-to medium after that decision is resolved.
+只有尚未解决的困难决策使用 Sol high；决策解决后恢复 medium。
 ```
 
-## Routing at a glance
+## Luna 任务包
 
-| Route | Use when | Owner |
-|---|---|---|
-| `LUNA_DIRECT` | Scope, behavior, tests, and rollback are clear | Luna executes; Sol accepts |
-| `HYBRID` | Substantial implementation can be split into safe packets | Sol plans; Luna executes; Sol accepts |
-| `SOL_ONLY` | Requirements, architecture, security, or blast radius are unresolved | Sol |
+每次委派都必须写清楚：
 
-Good Luna tasks include targeted implementation, tests, mechanical refactors, precise exploration, documentation, and repetitive edits across disjoint files.
+- 目标；
+- 必要上下文；
+- 范围内文件或模块；
+- 明确不允许改动的区域；
+- 约束；
+- 验收标准；
+- 必须运行的验证命令；
+- 返回格式；
+- 必须停止并升级给 Sol 的条件。
 
-Keep architecture, security boundaries, authentication, payments, difficult migrations, breaking interfaces, subtle concurrency, dependency selection, and final acceptance with Sol.
+可以直接复制使用 [Luna 任务包模板](docs/task-packet.md)。更完整的判断标准见 [路由指南](docs/routing-guide.md)。
 
-See [the routing guide](docs/routing-guide.md) for decision rules and examples.
+## 最小验证任务
 
-## The Luna task packet
-
-Delegation quality depends more on the packet than on the model name. Every packet should contain:
-
-- objective;
-- relevant context;
-- files or modules in scope;
-- explicit out-of-scope areas;
-- constraints;
-- acceptance criteria;
-- required validation commands;
-- expected return format;
-- escalation conditions.
-
-Use the copyable [task packet template](docs/task-packet.md).
-
-## Verification
-
-Configuration existing on disk is not proof that your Codex version loaded it. Verify in layers:
-
-1. Parse both TOML files.
-2. Confirm there is exactly one `[agents]` table.
-3. Start a new task in the repository.
-4. Ask for the minimal delegation test below.
-5. Confirm the task identifies `LUNA_DIRECT` and attributes execution to `luna_executor`.
-6. Inspect the actual diff and test result yourself.
-
-Minimal test prompt:
+在配置完成后新建 Codex 任务，发送：
 
 ```text
-Create docs/delegation-smoke-test.md containing exactly one line:
+创建 docs/delegation-smoke-test.md，文件只能包含一行：
 "Delegation smoke test passed."
 
-Classify this task first. If project-level custom agents are supported, delegate
-the edit to luna_executor. Validate the exact file content, then have Sol inspect
-the diff and report final acceptance. Do not change any other file.
+先对任务分类。如果当前 Codex 支持项目级自定义 Agent，把编辑工作委派给
+luna_executor。验证文件内容后，由 Sol 检查实际 diff 并给出最终验收。
+不得修改其他文件。
 ```
 
-If your interface does not recognize project-level custom agents, use the same packet manually with a Luna task/subagent, or keep Sol as supervisor and explicitly select Luna for the bounded execution task. See [verification and fallbacks](docs/verification.md).
+验证时不要只看文件是否生成，还要确认：
 
-## Why medium Sol by default?
+1. 任务被识别为 `LUNA_DIRECT`；
+2. 执行活动归属于 `luna_executor`；
+3. Luna 返回了文件与验证证据；
+4. Sol 查看实际 diff 后才宣布通过。
 
-Most repository work does not need maximum reasoning throughout. Planning, review, and debugging with a clear hypothesis generally fit medium. Escalate to high only when targeted evidence leaves a difficult question unresolved—for example, a high-blast-radius architecture decision, competing root-cause hypotheses, a subtle security or compatibility trade-off, or two failed evidence-based attempts.
+如果界面无法识别项目级自定义 Agent，请按相同任务包手动新建 Luna 子任务，或由 Sol 规划后显式选择 Luna 执行。详见 [验证与降级方案](docs/verification.md)。
 
-High is a temporary escalation for a specific unresolved question, not a badge for “important task.”
+## 为什么 Sol 默认 medium？
 
-## Design principles
+大多数项目工作不需要全程最高推理强度。规划、审查、目标明确的调试和常规仓库决策通常适合 medium。以下情况才值得升级 high：
 
-- **Evidence before escalation.** State the unresolved question and evidence already gathered.
-- **Smallest correct diff.** Luna does not refactor unrelated code.
-- **One writable owner per file.** Parallel agents write only to disjoint file sets.
-- **Validation is mandatory.** Generated code is not accepted code.
-- **No self-acceptance.** Luna reports evidence; Sol owns final judgment.
-- **Stop on ambiguity.** Luna escalates rather than guessing through design decisions.
-- **Return to medium.** Once the hard decision is resolved, routine work resumes at normal effort.
+- 定点调查后需求仍然矛盾；
+- 必须做高影响架构、安全、隐私、数据完整性、财务、并发或兼容性决策；
+- 最便宜的判别检查之后仍有多个合理假设；
+- 两次基于证据的方案都失败；
+- 最终验收仍存在代价很高且无法可靠解决的风险。
 
-## Repository contents
+升级前应说明“尚未解决的问题”和“已经掌握的证据”。困难问题解决后，后续常规工作恢复 medium。
 
-```text
-.
-├── .codex/
-│   ├── config.toml
-│   └── agents/
-│       └── luna-executor.toml
-├── docs/
-│   ├── routing-guide.md
-│   ├── task-packet.md
-│   └── verification.md
-├── AGENTS.md
-├── CONTRIBUTING.md
-├── LICENSE
-├── README.md
-└── README.zh-CN.md
-```
+## 设计原则
 
-## License
+- Sol 做大脑，Luna 做执行。
+- 证据先于升级，验证先于完成。
+- Luna 只接受目标、范围和验收清晰的任务包。
+- 每个可写文件同一时间只有一个 Agent 负责。
+- Luna 不为自己的工作做最终验收。
+- 遇到需求、架构、安全或兼容性问题时停止猜测并升级给 Sol。
+- 节省 Sol 用量不能以工程质量为代价。
+
+## 许可协议
 
 [MIT](LICENSE)
