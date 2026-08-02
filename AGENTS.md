@@ -1,188 +1,57 @@
-# Sol–Luna Engineering Rules
+# Luna-first Engineering Rules
 
-This repository uses evidence-driven execution: calibrate the task, state a hypothesis before broad investigation, prefer the cheapest discriminating check, verify before claiming completion, and report only decision-relevant results.
+Use GPT-5.6 Luna Max as the primary model for normal coding, analysis, testing, review, and task orchestration. Sol is an on-demand advisor, not the default supervisor.
 
-## Sol–Luna Model Routing
+## Automatic routing
 
-This repository uses a supervisor–executor workflow:
+Before substantial work, silently choose the cheapest route that preserves quality:
 
-- GPT-5.6 Sol is the primary supervisor.
-- `luna_executor` is the default implementation worker.
-- Sol owns requirements, architecture, decomposition, risk decisions, review, integration, and final acceptance.
-- Luna owns bounded execution after Sol has made the important decisions.
+1. `LUNA_LOCAL`: Luna handles the task in the primary thread when requirements are clear or delegation overhead would exceed the work.
+2. `LUNA_PARALLEL`: Luna delegates at least two genuinely independent packets to `luna_worker` when parallelism materially improves speed or protects the main context.
+3. `SOL_ADVISED`: Luna delegates one explicit hard decision to `sol_advisor`, receives a plan or ruling, then returns implementation to Luna.
 
-### Required workflow
+Do not call Sol merely because a task is long or touches many files. Size creates Luna packets; uncertainty, risk, and reasoning difficulty justify Sol.
 
-For every non-trivial task, Sol must first classify it as one of:
+## Sol escalation gate
 
-1. `SOL_ONLY`
-2. `LUNA_DIRECT`
-3. `HYBRID`
+Call `sol_advisor` only when at least one condition holds:
 
-Sol must briefly state the classification before substantial work begins.
+- requirements remain materially ambiguous or contradictory after targeted inspection;
+- architecture, security, privacy, authentication, authorization, cryptography, payments, destructive migration, data integrity, distributed consistency, or breaking compatibility requires a decision;
+- several plausible root causes remain after the cheapest discriminating checks;
+- two evidence-based implementation attempts failed;
+- final validation exposes an unresolved risk whose plausible failure cost is high.
 
-### Sol reasoning effort routing
+Before calling Sol, provide:
 
-Sol uses `medium` reasoning effort by default. This is the normal mode for planning, implementation supervision, code review, testing, debugging with a clear hypothesis, documentation, and routine repository decisions.
+- one decision question;
+- relevant evidence already collected;
+- constraints and non-negotiables;
+- options considered, if known;
+- the required return format: recommendation, rationale, risks, implementation constraints, and acceptance criteria.
 
-Escalate Sol to `high` only when stronger reasoning is likely to change the outcome, such as:
+Sol does not perform routine implementation. After its decision, Luna executes and validates the plan. Request Sol review at the end only when the final artifact still contains a high-risk judgment.
 
-- requirements remain ambiguous or contradictory after targeted investigation;
-- a high-blast-radius architecture, security, privacy, data-integrity, financial, concurrency, or compatibility decision is unavoidable;
-- several plausible hypotheses remain after the cheapest discriminating checks;
-- two evidence-based solution attempts have failed;
-- the task requires difficult cross-system reasoning or a subtle trade-off with costly failure modes;
-- final acceptance reveals unresolved risks that cannot be settled reliably at `medium`.
+## Luna parallelism
 
-Before escalating, Sol must state the unresolved question and the evidence already collected. High effort is for resolving that specific hard question, not for repeating routine exploration. After the difficult decision or blocker is resolved, return subsequent work to `medium` unless another escalation condition is met.
+Use `luna_worker` aggressively for independent implementation, tests, exploration, documentation, and mechanical changes. Parallelize only when:
 
-Do not escalate merely because a task is non-trivial, long, or involves many mechanical steps. Task classification and reasoning effort are separate: `SOL_ONLY` and `HYBRID` normally still run at `medium`.
+- packets do not depend on each other's unfinished output;
+- every packet has explicit scope and acceptance criteria;
+- writable files are disjoint;
+- one owner is assigned per writable file;
+- the primary Luna thread can integrate and validate the results.
 
-### LUNA_DIRECT
+Do not spawn agents for trivial tasks. More agents consume more tokens and can increase coordination cost.
 
-Delegate to `luna_executor` when all of the following are true:
+## Task packet
 
-- the objective is specific;
-- the affected area is reasonably bounded;
-- expected behavior is known;
-- acceptance criteria can be stated;
-- the result can be tested or inspected;
-- the change is reversible;
-- no major architecture or security decision is required.
+Every delegated packet must include objective, context, in-scope and out-of-scope files, constraints, acceptance criteria, exact validation, expected return, and escalation conditions.
 
-Typical Luna work:
+Workers must stop on ambiguity, unexpected interface/dependency changes, security or data-integrity impact, unavailable validation, material scope expansion, or two failed attempts.
 
-- implementing a clearly defined function or component;
-- fixing a bug whose cause and expected behavior are known;
-- writing or extending tests;
-- applying repetitive edits;
-- updating types, schemas, comments, and documentation;
-- mechanical refactoring with unchanged behavior;
-- codebase exploration with a precise question;
-- examining logs or test failures;
-- formatting, lint fixes, and dependency-free cleanup;
-- implementing individual steps from a Sol-approved plan.
+## Acceptance
 
-### SOL_ONLY
+The primary Luna thread owns integration and normal final acceptance. Inspect actual diffs and validation results; do not accept summaries alone. Sol owns only the difficult decision it was asked to make and any explicitly requested high-risk final review.
 
-Sol must retain the task when it involves:
-
-- ambiguous or conflicting requirements;
-- architecture or system design;
-- defining interfaces between major systems;
-- security, authentication, authorization, cryptography, or privacy;
-- payments or financially sensitive logic;
-- destructive database operations or difficult migrations;
-- concurrency, distributed consistency, or race conditions;
-- production incidents with unclear causes;
-- unfamiliar code with high blast radius;
-- performance-critical algorithms requiring trade-offs;
-- large cross-repository or cross-service changes;
-- dependency selection;
-- breaking API or schema changes;
-- complex long-context reasoning;
-- final review or acceptance;
-- any situation where a plausible-looking error would be costly.
-
-### HYBRID
-
-Use HYBRID for most substantial implementation work:
-
-1. Sol inspects the repository and clarifies the objective.
-2. Sol identifies assumptions, risks, dependencies, and affected modules.
-3. Sol produces an implementation plan.
-4. Sol defines acceptance criteria and validation commands.
-5. Sol divides the work into bounded task packets.
-6. Sol delegates suitable packets to `luna_executor`.
-7. Luna implements and returns evidence.
-8. Sol inspects the actual diff rather than relying only on Luna’s summary.
-9. Sol runs or confirms the relevant tests.
-10. Sol fixes, rejects, or re-delegates insufficient work.
-11. Sol performs final integration and acceptance.
-
-### Luna task packet
-
-Every delegation to `luna_executor` must include:
-
-- Objective
-- Relevant context
-- Files or modules in scope
-- Explicit out-of-scope areas
-- Constraints
-- Acceptance criteria
-- Required tests or commands
-- Expected return format
-- Conditions requiring escalation
-
-Do not send vague instructions such as “fix this,” “improve the code,” or “make it production-ready.”
-
-### Escalation rules
-
-Luna must stop and return control to Sol when:
-
-- requirements are ambiguous;
-- repository behavior contradicts the plan;
-- implementation requires an unapproved dependency;
-- public interfaces must change;
-- data loss or backward incompatibility is possible;
-- security-sensitive behavior is involved;
-- more than two implementation attempts fail;
-- required tests cannot be run;
-- the task expands materially beyond the original packet.
-
-Sol must not repeatedly ask Luna to guess through an unresolved design problem.
-
-### Parallelism
-
-Use parallel Luna agents only when tasks are independent.
-
-Preferred parallel work:
-
-- read-only exploration;
-- test analysis;
-- documentation review;
-- independent modules;
-- disjoint file sets.
-
-Avoid parallel writes to the same files or tightly coupled modules.
-
-One agent must own each writable file at a time.
-
-### Validation
-
-A task is not complete merely because code was generated.
-
-Before final acceptance, Sol must verify as applicable:
-
-- the actual diff;
-- build or type-check results;
-- targeted tests;
-- relevant broader tests;
-- lint or formatting checks;
-- error handling;
-- edge cases;
-- backward compatibility;
-- security implications;
-- unintended changes outside scope.
-
-Luna may report test results, but Sol owns the final judgment.
-
-### Efficiency policy
-
-Use Luna aggressively for well-defined execution, but do not delegate when coordination overhead exceeds the work.
-
-Use Sol tokens for uncertainty reduction, architecture, judgment, planning, difficult debugging, and review. Use Luna tokens for implementation, exploration, tests, repetitive work, and plan execution.
-
-Do not use Sol for long stretches of mechanical implementation when the task can be safely packetized. Do not use Luna merely to reduce cost when the task lacks clear acceptance criteria.
-
-### Required final report
-
-At the end of a substantial task, report:
-
-- Routing classification
-- Work retained by Sol
-- Work delegated to Luna
-- Files changed
-- Validation performed
-- Unresolved risks
-- Final acceptance status
+Never claim a model ran unless the agent activity or tool result identifies it. If a configured model is unavailable, report the limitation and use the best available safe route.
