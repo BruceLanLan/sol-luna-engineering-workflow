@@ -2,55 +2,36 @@
 
 ## Decision sequence
 
-Ask these questions in order:
+1. Can Luna Max complete and verify the task safely in one thread? Use `LUNA_LOCAL`.
+2. Are there at least two independent, disjoint, separately verifiable packets? Use `LUNA_PARALLEL` with `luna_worker`.
+3. Does one high-impact decision remain after targeted evidence gathering? Use `SOL_ADVISED` for that question, then return execution to Luna.
 
-1. Is the requirement ambiguous, conflicting, security-sensitive, destructive, or architecturally unresolved? Use `SOL_ONLY`.
-2. Are the objective, scope, expected behavior, acceptance criteria, validation, and rollback all clear? Use `LUNA_DIRECT`.
-3. Can Sol resolve the important decisions and split the remaining work into bounded packets? Use `HYBRID`.
-4. If none applies cleanly, Sol investigates until one does. Luna must not be asked to guess.
+## Difficulty is not size
+
+A thousand mechanical edits can be large but easy. A ten-line authorization change can be small but difficult. Escalate based on uncertainty, blast radius, reversibility, and the cost of a plausible error—not file count.
 
 ## Examples
 
-### LUNA_DIRECT
+### LUNA_LOCAL
 
-**Request:** Add unit tests for the existing `parseDate` behavior, including leap day and invalid input.
+Add tests for established parser behavior and run the targeted suite.
 
-Why: expected behavior exists, the module is bounded, acceptance is executable, and no design decision is needed.
+### LUNA_PARALLEL
 
-### HYBRID
+Implement an approved feature whose UI, serializer, and tests live in disjoint files. Assign one writable owner per packet; the primary Luna thread integrates and validates.
 
-**Request:** Add CSV export to an existing reporting feature.
+### SOL_ADVISED
 
-Sol decides the public interface, authorization behavior, file limits, escaping rules, and test plan. Luna implements separate UI, serializer, and test packets in disjoint files. Sol inspects the integrated diff and validates end-to-end behavior.
+A cache change may return stale authorization data. Luna first collects the call path, TTL configuration, and failing concurrency evidence. Sol Advisor decides the consistency policy and acceptance criteria. Luna implements the decision.
 
-### SOL_ONLY
-
-**Request:** Redesign tenant authorization while preserving backward compatibility.
-
-Why: security boundaries, public behavior, migration risk, and cross-system interfaces require supervisor judgment. Sol may later delegate mechanical packets after the design is approved.
-
-## Reasoning effort
-
-Use Sol `medium` for normal planning, routing, review, and evidence-driven debugging. High effort is warranted only when a specific unresolved question remains after targeted checks and the cost of a plausible error is high.
-
-Escalation should look like this:
+## Sol request shape
 
 ```text
-Unresolved question: Can the new cache policy return stale authorization data?
-Evidence collected: call graph, cache TTL configuration, two failing concurrency tests.
-Why high is justified: this is a security and consistency boundary with competing fixes.
+Decision: Can the proposed cache policy expose stale authorization data?
+Evidence: <call graph, TTL configuration, reproducer, test output>
+Constraints: <compatibility and latency requirements>
+Return: recommendation, rationale, rejected alternatives, risks,
+implementation constraints, and acceptance criteria.
 ```
 
-Do not say “use high because the task is big.” Size creates more packets; uncertainty and risk justify stronger reasoning.
-
-## Parallel execution
-
-Parallel Luna agents are useful only when work is independent. Good examples are read-only investigation, separate test suites, independent modules, and disjoint documentation. Avoid parallel writes to the same files or tightly coupled modules.
-
-Maintain an ownership map:
-
-| Packet | Owner | Writable files |
-|---|---|---|
-| API tests | Luna A | `tests/api/**` |
-| UI component | Luna B | `src/components/export/**` |
-| Integration and acceptance | Sol | No concurrent writes |
+Do not ask Sol to “review everything” or “complete the task.”
