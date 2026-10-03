@@ -5,6 +5,7 @@
 1. Can Luna Max complete and verify the task safely in one thread? Use `LUNA_LOCAL`.
 2. Are there at least two independent, disjoint, separately verifiable packets? Use `LUNA_PARALLEL` with `luna_worker`.
 3. Does one high-impact decision remain after targeted evidence gathering? Use `SOL_ADVISED` for that question, then return execution to Luna.
+4. Does the decision remain very difficult after Sol advice, or have two evidence-based implementation attempts failed? Use `ASTRA_ADVISED` with `astra_advisor` (`gpt-6-astra`), then return execution to Luna.
 
 ## Difficulty is not size
 

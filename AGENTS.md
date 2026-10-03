@@ -1,6 +1,6 @@
 # Luna-first Engineering Rules
 
-Use GPT-5.6 Luna Max as the primary model for normal coding, analysis, testing, review, and task orchestration. Sol is an on-demand advisor, not the default supervisor.
+Use GPT-6 Luna Max as the primary model for normal coding, analysis, testing, review, and task orchestration. GPT-6.1 Sol is an on-demand advisor, not the default supervisor.
 
 ## Automatic routing
 
@@ -9,6 +9,7 @@ Before substantial work, silently choose the cheapest route that preserves quali
 1. `LUNA_LOCAL`: Luna handles the task in the primary thread when requirements are clear or delegation overhead would exceed the work.
 2. `LUNA_PARALLEL`: Luna delegates at least two genuinely independent packets to `luna_worker` when parallelism materially improves speed or protects the main context.
 3. `SOL_ADVISED`: Luna delegates one explicit hard decision to `sol_advisor`, receives a plan or ruling, then returns implementation to Luna.
+4. `ASTRA_ADVISED`: Luna asks `astra_advisor` (`gpt-6-astra`) for a very difficult unresolved decision or repeated evidence-based failures, then returns implementation to Luna.
 
 Do not call Sol merely because a task is long or touches many files. Size creates Luna packets; uncertainty, risk, and reasoning difficulty justify Sol.
 
@@ -32,9 +33,13 @@ Before calling Sol, provide:
 
 Sol does not perform routine implementation. After its decision, Luna executes and validates the plan. Request Sol review at the end only when the final artifact still contains a high-risk judgment.
 
+## Astra escalation gate
+
+Call `astra_advisor` when a decision remains very difficult after Sol advice, or two evidence-based implementation attempts have failed. Use the same decision question, evidence, constraints, and return format required for Sol. Astra only advises; Luna implements and validates the decision.
+
 ## Luna parallelism
 
-Use `luna_worker` aggressively for independent implementation, tests, exploration, documentation, and mechanical changes. Parallelize only when:
+Use `luna_worker` aggressively for independent implementation, tests, exploration, documentation, and mechanical changes. Use `gpt-6-luna` for every worker; do not explicitly select `gpt-5.6-luna` unless the user requests it. Parallelize only when:
 
 - packets do not depend on each other's unfinished output;
 - every packet has explicit scope and acceptance criteria;
@@ -55,3 +60,9 @@ Workers must stop on ambiguity, unexpected interface/dependency changes, securit
 The primary Luna thread owns integration and normal final acceptance. Inspect actual diffs and validation results; do not accept summaries alone. Sol owns only the difficult decision it was asked to make and any explicitly requested high-risk final review.
 
 Never claim a model ran unless the agent activity or tool result identifies it. If a configured model is unavailable, report the limitation and use the best available safe route.
+
+## Workflow maintenance
+
+When upgrading this workflow's models or syncing its local installation, follow `docs/model-upgrades.md` in this repository. Change only the requested model bindings and directly related documentation; preserve Luna-first routing, reasoning effort, and existing Markdown unless a change is required or requested.
+
+“Update local Codex to use the new version” means syncing this project's latest configuration, custom agents, and managed global instructions to the active Codex home. Upgrade an application or CLI installation only when explicitly requested.

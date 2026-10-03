@@ -1,6 +1,6 @@
 name = "sol_advisor"
-description = "GPT-5.6 Sol advisor for difficult architecture, security, compatibility, root-cause, and high-impact decisions; not routine implementation."
-model = "gpt-5.6-sol"
+description = "GPT-6.1 Sol advisor for difficult architecture, security, compatibility, root-cause, and high-impact decisions; not routine implementation."
+model = "gpt-6.1-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 

@@ -2,7 +2,7 @@
 
 [English](README.en.md)
 
-这套配置把 **GPT-5.6 Luna Max** 设为日常主模型和执行层，只在真正困难的判断上调用 **GPT-5.6 Sol Advisor**。
+这套配置把 **GPT-6 Luna Max** 设为日常主模型和执行层，只在真正困难的判断上调用 **GPT-6.1 Sol Advisor**；极难或反复失败时请 **GPT-6 Astra Advisor**。
 
 > “无限子弹”是比喻。子 Agent 仍消耗 Token，并受账户额度、模型权限和并发上限约束。这套方案的目标是减少 Sol 消耗，而不是绕过额度限制。
 
@@ -14,6 +14,8 @@ flowchart TD
     L -->|普通、边界清晰| E["LUNA_LOCAL：Luna 直接执行并验证"]
     L -->|可拆成独立任务| P["LUNA_PARALLEL：多个 Luna Worker"]
     L -->|高风险、强歧义或连续失败| S["SOL_ADVISED：Sol Advisor 只做方案或裁决"]
+    S -->|极难或反复失败| A["ASTRA_ADVISED：Astra Advisor 只做裁决"]
+    A --> X
     S --> X["Luna 主线程/Worker 执行方案"]
     P --> V["Luna 主线程整合与验收"]
     E --> V
@@ -25,7 +27,7 @@ flowchart TD
 
 - 主线程从 Sol Medium 改为 Luna Max；
 - 普通任务不再为了路由和验收固定消耗 Sol；
-- 复杂但可拆解的工作由多个 Luna Max Worker 并行执行；
+- 复杂但可拆解的工作由多个 GPT-6 Luna Max Worker 并行执行；
 - Sol 变成按需调用的 Advisor，只回答明确的困难问题、制定高风险方案或做必要的高风险复核；
 - Sol 给出决策后，常规实现立即回到 Luna。
 
@@ -37,12 +39,15 @@ flowchart TD
 .codex/config.toml
 .codex/agents/luna-worker.toml
 .codex/agents/sol-advisor.toml
+.codex/agents/astra-advisor.toml
 AGENTS.md
 ```
 
-个人全局安装时，将两个 Agent 文件复制到 `~/.codex/agents/`。不要只写 `model` 和 `model_reasoning_effort`：Codex 自定义 Agent 还必须包含 `name`、`description` 和 `developer_instructions`。
+个人全局安装时，将三个 Agent 文件复制到 `~/.codex/agents/`。不要只写 `model` 和 `model_reasoning_effort`：Codex 自定义 Agent 还必须包含 `name`、`description` 和 `developer_instructions`。
 
 配置通常在新任务中加载，因此安装后新建一个 Codex 任务。
+
+模型发布后的升级步骤，以及“更新本机 Codex 使用本项目最新版本”的配置同步操作，见[模型升级与本机同步指南](docs/model-upgrades.md)。
 
 ## 自动路由
 
@@ -51,6 +56,7 @@ AGENTS.md
 - `LUNA_LOCAL`：需求明确、风险低或中等、一个线程完成更便宜；
 - `LUNA_PARALLEL`：存在至少两个真正独立、文件互斥、可单独验证的任务包；
 - `SOL_ADVISED`：架构、安全、数据完整性、破坏性迁移、跨系统接口、强歧义，或两次基于证据的尝试仍失败。
+- `ASTRA_ADVISED`：Sol 建议后仍极难解决，或两次基于证据的实现尝试失败；Astra 只给裁决，随后由 Luna 实现。
 
 Sol Advisor 不应接收“完成整个功能”这种宽泛任务。它只接收一个明确的决策问题和已有证据，返回方案、约束、风险与验收条件。
 
@@ -74,7 +80,7 @@ Sol Advisor 不应接收“完成整个功能”这种宽泛任务。它只接�
 
 ## 真实性门禁
 
-配置文件存在不代表当前 Codex、账户和调用工具一定加载了对应模型。只有 Agent 活动或工具结果明确标识 `gpt-5.6-luna` / `gpt-5.6-sol`，才可以报告实际使用了该模型。详见 [验证指南](docs/verification.md)。
+配置文件存在不代表当前 Codex、账户和调用工具一定加载了对应模型。只有 Agent 活动或工具结果明确标识 `gpt-6-luna` / `gpt-6.1-sol` / `gpt-6-astra`，才可以报告实际使用了该模型。详见 [验证指南](docs/verification.md)。
 
 ## 许可协议
 
